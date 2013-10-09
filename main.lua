@@ -4,10 +4,10 @@
 -- compatible with löve 0.6.0 and up
 
 function love.load()
-   hamster = love.graphics.newImage("hero.png")
+   hamster = love.graphics.newImage("goblin.gif")
    x = 50
    y = 50
-   speed = 300
+   speed = 200
 end
 
 function love.update(dt)
