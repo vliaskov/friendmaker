@@ -1,6 +1,4 @@
--- Tutorial 1: Hamster Ball
--- Add an image to the game and move it around using
--- the arrow keys.
+-- Goblin - the friendmaker
 -- compatible with löve 0.6.0 and up
 
 numstrangers = 4
@@ -8,7 +6,14 @@ numitems = 8
 stranger_mindist = 50
 stranger_speed = 20
 item_cycle = 3
-item_random_stall = 3
+item_random_stall = 2
+entity_moverandom_duration = 1
+entity_random_speed = 1
+
+colorsRGB = {
+  friendcolor = {240, 248, 255},
+  antiquewhite = {250, 235, 215},
+}
 
 function love.load()
    -- love.graphics.setMode(600, 600, false, false, 0)
@@ -17,6 +22,15 @@ function love.load()
    princess = love.graphics.newImage("princess.jpg")
    flower = love.graphics.newImage("flower.jpg")
    boar = love.graphics.newImage("boar.png")
+
+   happyfemale = love.audio.newSource("happy-female.wav", "static") 
+   happymale = love.audio.newSource("happy-male.wav", "static") 
+   maniaclaugh = love.audio.newSource("maniac-laugh.wav", "static") 
+   sadmale = love.audio.newSource("sad-male.wav", "static") 
+   pop = love.audio.newSource("pop.wav", "static") 
+   music = love.audio.newSource("POL-deep-emerald-short.wav")
+   love.audio.play(music)
+
    x = 50
    y = 50
    speed = 200
@@ -33,12 +47,15 @@ function love.load()
      strangers[i].y = {}
      strangers[i].x = math.random(width)
      strangers[i].y = math.random(height)
+     strangers[i].isfriend = false
      role = math.random(3)
      strangers[i].pic = {}
      if (role == 1) then
        strangers[i].pic = princess
      else
        strangers[i].pic = stranger
+     strangers[i].oldtime = oldtime
+     strangers[i].stall = math.random(item_random_stall)
      end  
    end
    
@@ -63,24 +80,105 @@ function love.load()
        items[i].pic = boar
        items[i].visible = true
        items[i].onoff = false
+       items[i].automove = true
        items[i].canpick = false
+       items[i].stall = math.random(item_random_stall)
      end  
    end
 end
 
+function use_item(item)
+   if (item) then  
+   for i=1,numstrangers,1 do
+     if ((math.abs(x - strangers[i].x) < 4*stranger_mindist) and (math.abs(y - strangers[i].y) < 4*stranger_mindist)) then
+       if (item.pic == flower and strangers[i].pic == princess) then
+         strangers[i].isfriend = true
+         love.graphics.setColor(0, 0, 255)
+         love.audio.play(happyfemale)
+         inventory = nil
+       end
+       if (item.pic == flower and strangers[i].pic == male) then
+         love.graphics.setColor(0, 255, 255)
+         love.audio.play(sadmale)
+       end
+     end
+   end
+   end
+end
+
+function drop_item(item)
+     if (item) then
+       item.visible = true
+       item.picked = false
+       item.x = x
+       item.y = y
+       inventory = nil
+       item.oldtime = os.time()
+     end
+end
+
+function get_item()
+   for i=1,numitems,1 do
+     if ((items[i].picked == false) and (math.abs(x - items[i].x) < 20) and (math.abs(y - items[i].y) < 20)) then
+       if (items[i].canpick == true) then
+        items[i].picked = true
+        items[i].visible = false
+        if (inventory) then
+         drop_item(inventory)
+        end
+        inventory = items[i]
+        love.audio.play(pop)
+       end
+     end    
+     if ((items[i].picked == true)) then
+       items[i].x = x
+       items[i].y = y
+     end   
+   end
+end
+
+function automove(entity)
+   newtime = os.time()
+   if (newtime - entity.oldtime > item_cycle + entity.stall) then
+      if (entity.moving == false) then
+             entity.dir = math.random(4)
+             entity.oldtime = newtime
+             entity.stall = math.random(item_random_stall)
+             entity.moving = true
+      else
+             entity.moving = false
+             entity.oldtime = newtime
+      end
+  elseif (entity.moving == true) then
+    if (newtime - entity.oldtime > entity_moverandom_duration) then
+      entity.moving = false
+    elseif (entity.dir == 1) then
+      entity.x = entity.x + entity_random_speed
+    elseif (entity.dir == 2) then
+      entity.x = entity.x - entity_random_speed
+    elseif (entity.dir == 3) then
+      entity.y = entity.y + entity_random_speed
+    else
+      entity.y = entity.y - entity_random_speed
+    end  
+  end
+end
+
 function love.update(dt)
    for i=1,numstrangers,1 do
+     strangers[i].runningaway = false
      if ((math.abs(x - strangers[i].x) <stranger_mindist) and (math.abs(y - strangers[i].y) < stranger_mindist)) then
         if ( (strangers[i].x > x) and (strangers[i].x < width - stranger_speed) ) then
           strangers[i].x = strangers[i].x + stranger_speed
         elseif ( (strangers[i].x < x) and (strangers[i].x > stranger_speed) ) then
           strangers[i].x = strangers[i].x - stranger_speed
         end
-     if ( (strangers[i].y > y) and (strangers[i].y < height - stranger_speed) ) then
+        if ( (strangers[i].y > y) and (strangers[i].y < height - stranger_speed) ) then
           strangers[i].y = strangers[i].y + stranger_speed
         elseif ( (strangers[i].y < y) and (strangers[i].y > stranger_speed) ) then
           strangers[i].y = strangers[i].y - stranger_speed
         end
+        strangers[i].runningaway = true
      end    
    end
    
@@ -100,17 +198,9 @@ function love.update(dt)
            end
          end
        end
-     if ((items[i].picked == false) and (math.abs(x - items[i].x) < 20) and (math.abs(y - items[i].y) < 20)) then
-       if (items[i].canpick == true) then
-        items[i].picked = true
-        items[i].visible = false
-        inventory = items[i]
-       end
-     end    
-     if ((items[i].picked == true)) then
-       items[i].x = x
-       items[i].y = y
-     end   
+       if (items[i].automove == true) then
+        automove(items[i])
+       end  
    end
 
    if love.keyboard.isDown("right") then
@@ -125,6 +215,15 @@ function love.update(dt)
    end
    if love.keyboard.isDown("up") then
       y = y - (speed * dt)
+   end
+   if love.keyboard.isDown(" ") then
+      use_item(inventory)
+   end
+   if love.keyboard.isDown("d") then
+      drop_item(inventory)
+   end
+   if love.keyboard.isDown("s") then
+      get_item()
    end
 end
 
