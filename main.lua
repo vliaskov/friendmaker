@@ -51,16 +51,19 @@ function love.load()
      items[i].y = math.random(height)
      role = math.random(3)
      items[i].pic = {}
+     items[i].oldtime = oldtime
      if (role == 1) then
        items[i].pic = flower
        items[i].visible = true
        items[i].onoff = true
-       items[i].oldtime = oldtime
        items[i].stall = math.random(item_random_stall)
+       items[i].canpick = true
+       items[i].picked = false
      else
        items[i].pic = boar
        items[i].visible = true
        items[i].onoff = false
+       items[i].canpick = false
      end  
    end
 end
@@ -82,7 +85,7 @@ function love.update(dt)
    end
    
    for i=1,numitems,1 do
-       if (items[i].onoff) then
+       if (items[i].onoff and (items[i].picked == false)) then
          newtime = os.time()
          if (newtime - items[i].oldtime > item_cycle + items[i].stall) then
            if (items[i].visible == false) then
@@ -97,6 +100,17 @@ function love.update(dt)
            end
          end
        end
+     if ((items[i].picked == false) and (math.abs(x - items[i].x) < 20) and (math.abs(y - items[i].y) < 20)) then
+       if (items[i].canpick == true) then
+        items[i].picked = true
+        items[i].visible = false
+        inventory = items[i]
+       end
+     end    
+     if ((items[i].picked == true)) then
+       items[i].x = x
+       items[i].y = y
+     end   
    end
 
    if love.keyboard.isDown("right") then
