@@ -4,11 +4,12 @@
 numstrangers = 4
 numitems = 8
 stranger_mindist = 50
+ontarget_mindist = 20
 stranger_speed = 20
 item_cycle = 3
-item_random_stall = 2
+item_random_stall = 4
 entity_moverandom_duration = 1
-entity_random_speed = 1
+entity_random_speed = 10
 
 colorsRGB = {
   friendcolor = {240, 248, 255},
@@ -17,17 +18,20 @@ colorsRGB = {
 
 function love.load()
    -- love.graphics.setMode(600, 600, false, false, 0)
-   hamster = love.graphics.newImage("goblin.gif")
+   goblin = love.graphics.newImage("goblin.gif")
    stranger = love.graphics.newImage("peasant.jpg")
    princess = love.graphics.newImage("princess.jpg")
    flower = love.graphics.newImage("flower.jpg")
    boar = love.graphics.newImage("boar.png")
+   background = love.graphics.newImage("meadow.jpg")
+   grave = love.graphics.newImage("rip.gif")
 
    happyfemale = love.audio.newSource("happy-female.wav", "static") 
    happymale = love.audio.newSource("happy-male.wav", "static") 
    maniaclaugh = love.audio.newSource("maniac-laugh.wav", "static") 
    sadmale = love.audio.newSource("sad-male.wav", "static") 
    pop = love.audio.newSource("pop.wav", "static") 
+   scream = love.audio.newSource("scream.wav", "static") 
    music = love.audio.newSource("POL-deep-emerald-short.wav")
    love.audio.play(music)
 
@@ -48,6 +52,7 @@ function love.load()
      strangers[i].x = math.random(width)
      strangers[i].y = math.random(height)
      strangers[i].isfriend = false
+     strangers[i].dead = false
      role = math.random(3)
      strangers[i].pic = {}
      if (role == 1) then
@@ -87,10 +92,32 @@ function love.load()
    end
 end
 
+interact_matrix = {
+    boar, peasant, kill
+}
+
+function kill(a, b)
+    b.pic = grave
+    b.dead = true 
+    love.audio.play(scream); 
+end
+
+function interact (a, b)
+   inter=true
+--   kill(a,b) 
+--   interact_matrix[2](a, b)
+--   for i=1,3,1 do
+----    if (interact_matrix[i][1] == a.pic and interact_matrix[i][2] == b.pic) then
+--      interact_matrix[i][3](a, b)
+--    break
+--    end
+--   end
+end
+
 function use_item(item)
    if (item) then  
    for i=1,numstrangers,1 do
-     if ((math.abs(x - strangers[i].x) < 4*stranger_mindist) and (math.abs(y - strangers[i].y) < 4*stranger_mindist)) then
+     if ( (math.abs(x - strangers[i].x) < 4*stranger_mindist) and (math.abs(y - strangers[i].y) < 4*stranger_mindist)) then
        if (item.pic == flower and strangers[i].pic == princess) then
          strangers[i].isfriend = true
          love.graphics.setColor(0, 0, 255)
@@ -164,10 +191,18 @@ function automove(entity)
   end
 end
 
+
+
+
 function love.update(dt)
    for i=1,numstrangers,1 do
+     for j=1,numitems,1 do
+       if ((math.abs(items[j].x - strangers[i].x) < ontarget_mindist) and (math.abs(items[j].y - strangers[i].y) < ontarget_mindist)) then
+         interact(items[j], strangers[i]);   
+       end
+     end
      strangers[i].runningaway = false
-     if ((math.abs(x - strangers[i].x) <stranger_mindist) and (math.abs(y - strangers[i].y) < stranger_mindist)) then
+     if (strangers[i].dead == false and (math.abs(x - strangers[i].x) <stranger_mindist) and (math.abs(y - strangers[i].y) < stranger_mindist)) then
         if ( (strangers[i].x > x) and (strangers[i].x < width - stranger_speed) ) then
           strangers[i].x = strangers[i].x + stranger_speed
         elseif ( (strangers[i].x < x) and (strangers[i].x > stranger_speed) ) then
@@ -228,7 +263,9 @@ function love.update(dt)
 end
 
 function love.draw()
-   love.graphics.draw(hamster, x, y)
+   -- love.graphics.draw(background, 0, 0)
+   if (inter ==true) then love.graphics.print("interact", 10, 10) end
+   love.graphics.draw(goblin, x, y)
    for i=1,numstrangers,1 do
     love.graphics.draw(strangers[i].pic, strangers[i].x, strangers[i].y, 0, 0.3, 0.3)
    end
